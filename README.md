@@ -15,6 +15,7 @@
 - [Features](#-features)
 - [Prerequisites](#-prerequisites)
 - [Installation](#-installation)
+- [LocalStack Setup (Local Development)](#-localstack-setup-local-development)
 - [Configuration](#-configuration)
 - [Usage](#-usage)
 - [Data Format](#-data-format)
@@ -99,6 +100,16 @@ This project simulates a **Bedside Patient Monitoring System** that collects vit
 
 ## 🔧 Prerequisites
 
+### For Local Development (Recommended for Testing)
+
+- **Docker Desktop** - For running LocalStack
+- **Python 3.7+**
+- **pip** (Python package manager)
+
+👉 **[Skip to LocalStack Setup](#-localstack-setup-local-development)** for local development without AWS account
+
+### For AWS Production Deployment
+
 ### AWS Resources
 
 You need the following AWS resources configured:
@@ -169,6 +180,69 @@ $env:AWS_DEFAULT_REGION="us-east-1"
 ```
 
 **Option C: IAM Role** (if running on EC2/Lambda)
+
+---
+
+## 🐳 LocalStack Setup (Local Development)
+
+**Run the entire system locally without AWS account or internet connection!**
+
+LocalStack provides a fully functional local AWS cloud stack for development and testing.
+
+### Quick Start with LocalStack
+
+```powershell
+# Run the automated setup script
+.\setup_localstack.ps1
+```
+
+This script will:
+1. ✅ Check prerequisites (Docker, Python)
+2. ✅ Install Python dependencies
+3. ✅ Start LocalStack in Docker
+4. ✅ Create Kinesis streams and DynamoDB table
+5. ✅ Verify configuration
+
+### Manual LocalStack Setup
+
+```powershell
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Start LocalStack
+docker-compose up -d
+
+# 3. Wait for initialization
+Start-Sleep -Seconds 30
+
+# 4. Verify services
+awslocal kinesis list-streams
+awslocal dynamodb list-tables
+
+# 5. Set environment variable
+$env:USE_LOCALSTACK="true"
+
+# 6. Run publisher
+python kinesis_publisher_local.py
+
+# 7. Run consumer (in new terminal)
+python consume_and_update_local.py
+```
+
+### LocalStack Files Reference
+
+| File | Purpose |
+|------|---------|
+| `docker-compose.yml` | LocalStack container configuration |
+| `localstack_init/init.sh` | Auto-creates AWS resources |
+| `localstack_config.py` | Python helper for LocalStack/AWS switching |
+| `kinesis_publisher_local.py` | Direct Kinesis publisher (no IoT Core) |
+| `consumer_and_anomaly_detector_local.py` | LocalStack-compatible consumer |
+| `consume_and_update_local.py` | LocalStack-compatible DynamoDB writer |
+| `setup_localstack.ps1` | Automated setup script |
+| `.env.example` | Environment configuration template |
+
+**📖 For complete LocalStack documentation, see [LOCALSTACK_SETUP.md](LOCALSTACK_SETUP.md)**
 
 ---
 
@@ -423,18 +497,34 @@ COMUNICACIONES-IOT-AWS/
 ├── .github/
 │   └── copilot-instructions.md    # AI agent guidance
 │
+├── certificates/                  # (Create this directory for AWS certs)
+│   ├── root-CA.crt
+│   ├── device.cert.pem
+│   └── device.private.key
+│
+├── localstack_init/               # LocalStack initialization
+│   └── init.sh                    # Auto-creates AWS resources locally
+│
+├── localstack_data/               # LocalStack persistence (auto-created)
+│
 ├── BedSideMonitor.py              # Primary MQTT publisher with CLI args
 ├── local_consumer.py              # Alternative MQTT publisher
 ├── consumer_and_anomaly_detector.py   # Kinesis consumer (print only)
 ├── consume_and_update.py          # Kinesis consumer + DynamoDB writer
 │
-├── README.md                      # This file
-├── requirements.txt               # Python dependencies (create this)
+├── localstack_config.py           # LocalStack/AWS configuration helper
+├── kinesis_publisher_local.py     # Direct Kinesis publisher (LocalStack)
+├── consumer_and_anomaly_detector_local.py  # LocalStack-compatible consumer
+├── consume_and_update_local.py    # LocalStack-compatible DynamoDB writer
 │
-└── certificates/                  # (Create this directory)
-    ├── root-CA.crt
-    ├── device.cert.pem
-    └── device.private.key
+├── docker-compose.yml             # LocalStack container configuration
+├── setup_localstack.ps1           # Automated LocalStack setup script
+├── .env.example                   # Environment configuration template
+├── .env                           # Your local environment (create from .env.example)
+│
+├── README.md                      # This file
+├── LOCALSTACK_SETUP.md            # Complete LocalStack guide
+└── requirements.txt               # Python dependencies
 ```
 
 ---

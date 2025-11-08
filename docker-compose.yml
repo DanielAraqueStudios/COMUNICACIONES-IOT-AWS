@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  localstack:
+    container_name: bedside-monitor-localstack
+    image: localstack/localstack:latest
+    ports:
+      # Edge port for all services
+      - "4566:4566"
+      # LocalStack dashboard (Pro only)
+      - "4567:4567"
+    environment:
+      # Services to emulate (IoT Core requires Pro, we'll use alternatives)
+      - SERVICES=kinesis,dynamodb,iot,logs,cloudwatch
+      # Enable debug mode
+      - DEBUG=1
+      # Data persistence
+      - PERSISTENCE=1
+      # Directory for persistence
+      - DATA_DIR=/tmp/localstack/data
+      # Docker host
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      # Hostname for LocalStack
+      - HOSTNAME=localhost
+      - HOSTNAME_EXTERNAL=localhost
+      # Use local DNS server
+      - DNS_ADDRESS=0
+      # Additional configuration
+      - KINESIS_ERROR_PROBABILITY=0.0
+      - KINESIS_LATENCY=0
+      - EAGER_SERVICE_LOADING=1
+    volumes:
+      # Mount Docker socket for Lambda/ECS
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      # Persistence volume
+      - "./localstack_data:/tmp/localstack"
+      # Init scripts
+      - "./localstack_init:/docker-entrypoint-initaws.d"
+    networks:
+      - bedside-monitor-network
+
+networks:
+  bedside-monitor-network:
+    driver: bridge

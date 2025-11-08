@@ -1,6 +1,10 @@
 # AWS IoT Bedside Monitor - Python Dependencies
 # Install with: pip install -r requirements.txt
 
+# =============================================================================
+# CORE AWS DEPENDENCIES
+# =============================================================================
+
 # AWS IoT Device SDK - For MQTT communication with AWS IoT Core
 # Supports X.509 certificate authentication and WebSocket connections
 AWSIoTPythonSDK>=1.5.2
@@ -9,7 +13,37 @@ AWSIoTPythonSDK>=1.5.2
 # Used by consumer scripts to read streams and write to database
 boto3>=1.26.0
 
-# Additional dependencies (automatically installed with above)
+# =============================================================================
+# LOCALSTACK DEPENDENCIES (for local development)
+# =============================================================================
+
+# LocalStack - Run AWS services locally for development and testing
+# Emulates Kinesis, DynamoDB, IoT Core, and more
+localstack>=3.0.0
+
+# LocalStack AWS CLI - LocalStack-specific AWS CLI wrapper
+localstack-client>=2.5
+
+# AWS CLI Local - Wrapper for using AWS CLI with LocalStack
+awscli-local>=0.22
+
+# Docker SDK for Python - Required by LocalStack to manage containers
+docker>=6.1.0
+
+# =============================================================================
+# OPTIONAL DEVELOPMENT DEPENDENCIES
+# =============================================================================
+
+# Python dotenv - Load environment variables from .env file
+python-dotenv>=1.0.0
+
+# Requests - HTTP library (used by LocalStack and boto3)
+requests>=2.31.0
+
+# =============================================================================
+# ADDITIONAL DEPENDENCIES (automatically installed with above)
+# =============================================================================
 # botocore>=1.29.0  (included with boto3)
 # urllib3>=1.26.0   (included with boto3)
 # python-dateutil>=2.8.0  (included with boto3)
+# pyyaml>=6.0  (included with localstack)
