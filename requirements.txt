@@ -1,0 +1,15 @@
+# AWS IoT Bedside Monitor - Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# AWS IoT Device SDK - For MQTT communication with AWS IoT Core
+# Supports X.509 certificate authentication and WebSocket connections
+AWSIoTPythonSDK>=1.5.2
+
+# AWS SDK for Python - For Kinesis and DynamoDB operations
+# Used by consumer scripts to read streams and write to database
+boto3>=1.26.0
+
+# Additional dependencies (automatically installed with above)
+# botocore>=1.29.0  (included with boto3)
+# urllib3>=1.26.0   (included with boto3)
+# python-dateutil>=2.8.0  (included with boto3)
