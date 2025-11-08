@@ -14,10 +14,8 @@ services:
       - SERVICES=kinesis,dynamodb,iot,logs,cloudwatch
       # Enable debug mode
       - DEBUG=1
-      # Data persistence
-      - PERSISTENCE=1
-      # Directory for persistence
-      - DATA_DIR=/tmp/localstack/data
+      # Disable persistence to avoid Windows volume issues
+      - PERSISTENCE=0
       # Docker host
       - DOCKER_HOST=unix:///var/run/docker.sock
       # Hostname for LocalStack
@@ -32,8 +30,6 @@ services:
     volumes:
       # Mount Docker socket for Lambda/ECS
       - "/var/run/docker.sock:/var/run/docker.sock"
-      # Persistence volume
-      - "./localstack_data:/tmp/localstack"
       # Init scripts
       - "./localstack_init:/docker-entrypoint-initaws.d"
     networks:

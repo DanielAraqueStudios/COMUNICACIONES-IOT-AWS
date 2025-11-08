@@ -189,44 +189,143 @@ $env:AWS_DEFAULT_REGION="us-east-1"
 
 LocalStack provides a fully functional local AWS cloud stack for development and testing.
 
-### Quick Start with LocalStack
+### ✅ Successfully Tested on Windows (November 2025)
+
+This setup has been verified working on:
+- Windows 11
+- Docker Desktop 28.3.0
+- Python 3.13.2
+- LocalStack 4.10.1
+
+### Quick Start with LocalStack (Tested & Working)
 
 ```powershell
-# Run the automated setup script
-.\setup_localstack.ps1
-```
+# 1. Set LocalStack authentication (if you have Pro)
+localstack auth set-token YOUR-TOKEN
 
-This script will:
-1. ✅ Check prerequisites (Docker, Python)
-2. ✅ Install Python dependencies
-3. ✅ Start LocalStack in Docker
-4. ✅ Create Kinesis streams and DynamoDB table
-5. ✅ Verify configuration
+# 2. Set AWS credentials (dummy values for LocalStack)
+$env:AWS_ACCESS_KEY_ID="test"
+$env:AWS_SECRET_ACCESS_KEY="test"
+$env:AWS_DEFAULT_REGION="us-east-1"
 
-### Manual LocalStack Setup
-
-```powershell
-# 1. Install dependencies
-pip install -r requirements.txt
-
-# 2. Start LocalStack
+# 3. Start LocalStack container
 docker-compose up -d
 
-# 3. Wait for initialization
+# 4. Wait for LocalStack to initialize (30 seconds)
 Start-Sleep -Seconds 30
 
-# 4. Verify services
-awslocal kinesis list-streams
-awslocal dynamodb list-tables
+# 5. Create AWS resources (Kinesis + DynamoDB)
+$env:USE_LOCALSTACK="true"
+& ".venv/Scripts/python.exe" init_localstack.py
 
-# 5. Set environment variable
+# 6. Start the data publisher
+& ".venv/Scripts/python.exe" kinesis_publisher_local.py
+```
+
+**In a NEW terminal, start the consumer:**
+
+```powershell
+# Set environment
 $env:USE_LOCALSTACK="true"
 
-# 6. Run publisher
-python kinesis_publisher_local.py
+# Run consumer with DynamoDB writing
+& ".venv/Scripts/python.exe" consume_and_update_local.py
+```
 
-# 7. Run consumer (in new terminal)
-python consume_and_update_local.py
+### Step-by-Step Setup (Detailed)
+
+#### 1. **Ensure Docker Desktop is Running**
+```powershell
+docker --version
+# Should show: Docker version 28.x.x or later
+```
+
+#### 2. **Configure Python Virtual Environment**
+```powershell
+# Python will auto-create .venv if needed
+# Verify Python version
+python --version  # Should be 3.7+
+```
+
+#### 3. **Install Dependencies**
+```powershell
+# Using pip in virtual environment
+pip install -r requirements.txt
+```
+
+This installs:
+- `AWSIoTPythonSDK` - MQTT client
+- `boto3` - AWS SDK
+- `localstack` - Local AWS emulator
+- `docker` - Docker SDK
+
+#### 4. **Create Environment File**
+```powershell
+Copy-Item .env.example .env
+```
+
+Edit `.env` and ensure:
+```ini
+USE_LOCALSTACK=true
+LOCALSTACK_ENDPOINT=http://localhost:4566
+```
+
+#### 5. **Start LocalStack**
+```powershell
+docker-compose up -d
+```
+
+Wait 30 seconds, then verify:
+```powershell
+docker ps
+# Should show: bedside-monitor-localstack (Status: Up, healthy)
+```
+
+#### 6. **Initialize AWS Resources**
+```powershell
+$env:USE_LOCALSTACK="true"
+& ".venv/Scripts/python.exe" init_localstack.py
+```
+
+Expected output:
+```
+✅ Created stream: BSMStream
+✅ Created stream: BSM_Stream  
+✅ Created stream: BSM_Data_Stream1
+✅ Created table: BSM_anamoly
+```
+
+#### 7. **Run the System**
+
+**Terminal 1 - Publisher:**
+```powershell
+$env:USE_LOCALSTACK="true"
+& ".venv/Scripts/python.exe" kinesis_publisher_local.py
+```
+
+You'll see:
+```
+✅ Published to BSM_Stream: {"deviceid": "BSM_G101", "datatype": "HeartRate", "value": 85}
+```
+
+**Terminal 2 - Consumer (Anomaly Detection + DynamoDB):**
+```powershell
+$env:USE_LOCALSTACK="true"
+& ".venv/Scripts/python.exe" consume_and_update_local.py
+```
+
+You'll see:
+```
+📥 Record #1: {"deviceid": "BSM_G101", ...}
+✅ Normal reading
+🚨 Anomaly detected and saved to DynamoDB!
+```
+
+**Terminal 3 - View Anomalies (Optional):**
+```powershell
+# Query DynamoDB for anomalies
+$env:USE_LOCALSTACK="true"
+& ".venv/Scripts/python.exe" -c "from localstack_config import get_dynamodb_resource; db = get_dynamodb_resource(); table = db.Table('BSM_anamoly'); print(f'Total anomalies: {table.scan()[\"Count\"]}')"
 ```
 
 ### LocalStack Files Reference
@@ -234,12 +333,13 @@ python consume_and_update_local.py
 | File | Purpose |
 |------|---------|
 | `docker-compose.yml` | LocalStack container configuration |
-| `localstack_init/init.sh` | Auto-creates AWS resources |
+| `localstack_init/init.sh` | Auto-creates AWS resources (Linux/Mac) |
+| `init_localstack.py` | **Creates AWS resources (Windows - WORKING)** |
 | `localstack_config.py` | Python helper for LocalStack/AWS switching |
 | `kinesis_publisher_local.py` | Direct Kinesis publisher (no IoT Core) |
 | `consumer_and_anomaly_detector_local.py` | LocalStack-compatible consumer |
 | `consume_and_update_local.py` | LocalStack-compatible DynamoDB writer |
-| `setup_localstack.ps1` | Automated setup script |
+| `setup_localstack.ps1` | Automated setup script (alternative) |
 | `.env.example` | Environment configuration template |
 
 **📖 For complete LocalStack documentation, see [LOCALSTACK_SETUP.md](LOCALSTACK_SETUP.md)**
@@ -503,9 +603,7 @@ COMUNICACIONES-IOT-AWS/
 │   └── device.private.key
 │
 ├── localstack_init/               # LocalStack initialization
-│   └── init.sh                    # Auto-creates AWS resources locally
-│
-├── localstack_data/               # LocalStack persistence (auto-created)
+│   └── init.sh                    # Auto-creates AWS resources (Linux/Mac)
 │
 ├── BedSideMonitor.py              # Primary MQTT publisher with CLI args
 ├── local_consumer.py              # Alternative MQTT publisher
@@ -513,6 +611,7 @@ COMUNICACIONES-IOT-AWS/
 ├── consume_and_update.py          # Kinesis consumer + DynamoDB writer
 │
 ├── localstack_config.py           # LocalStack/AWS configuration helper
+├── init_localstack.py             # ⭐ Creates AWS resources (Windows - WORKING)
 ├── kinesis_publisher_local.py     # Direct Kinesis publisher (LocalStack)
 ├── consumer_and_anomaly_detector_local.py  # LocalStack-compatible consumer
 ├── consume_and_update_local.py    # LocalStack-compatible DynamoDB writer
@@ -521,6 +620,7 @@ COMUNICACIONES-IOT-AWS/
 ├── setup_localstack.ps1           # Automated LocalStack setup script
 ├── .env.example                   # Environment configuration template
 ├── .env                           # Your local environment (create from .env.example)
+├── .gitignore                     # Git ignore rules (protects certificates)
 │
 ├── README.md                      # This file
 ├── LOCALSTACK_SETUP.md            # Complete LocalStack guide
@@ -649,7 +749,78 @@ See [LICENSE](LICENSE) file for details.
 
 ---
 
-## 📞 Support
+## � Quick Reference - LocalStack Commands
+
+### Start/Stop LocalStack
+```powershell
+# Start
+docker-compose up -d
+
+# Stop (keeps resources)
+docker-compose stop
+
+# Stop and remove (deletes all data)
+docker-compose down
+
+# View logs
+docker logs bedside-monitor-localstack -f
+```
+
+### Check Status
+```powershell
+# Container status
+docker ps
+
+# LocalStack health
+curl http://localhost:4566/_localstack/health
+```
+
+### Publisher Commands
+```powershell
+# Start publisher (Terminal 1)
+$env:USE_LOCALSTACK="true"
+& ".venv/Scripts/python.exe" kinesis_publisher_local.py
+
+# Stop: Press Ctrl+C
+```
+
+### Consumer Commands
+```powershell
+# Start consumer with DynamoDB (Terminal 2)
+$env:USE_LOCALSTACK="true"
+& ".venv/Scripts/python.exe" consume_and_update_local.py
+
+# Start anomaly detector only (Terminal 3 - optional)
+$env:USE_LOCALSTACK="true"
+& ".venv/Scripts/python.exe" consumer_and_anomaly_detector_local.py
+```
+
+### Query Data
+```powershell
+# Count anomalies in DynamoDB
+$env:USE_LOCALSTACK="true"
+& ".venv/Scripts/python.exe" -c "from localstack_config import get_dynamodb_resource; db = get_dynamodb_resource(); table = db.Table('BSM_anamoly'); print(f'Anomalies: {table.scan()[\"Count\"]}')"
+
+# List Kinesis streams
+$env:USE_LOCALSTACK="true"
+& ".venv/Scripts/python.exe" -c "from localstack_config import get_kinesis_client; client = get_kinesis_client(); print(client.list_streams()['StreamNames'])"
+```
+
+### Reset Everything
+```powershell
+# Stop and remove all LocalStack data
+docker-compose down -v
+
+# Restart fresh
+docker-compose up -d
+Start-Sleep -Seconds 30
+$env:USE_LOCALSTACK="true"
+& ".venv/Scripts/python.exe" init_localstack.py
+```
+
+---
+
+## �📞 Support
 
 For questions or issues:
 
